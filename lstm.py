@@ -2,9 +2,8 @@ from pandas import read_csv
 
 
 def get_reviews_data(fpath):
-    """This function loops through each txt files of positive and negative reviews, converts it to a pandas Datframe
-     with columns 'Review' and 'Sentiment, and shuffles the dataframe
-    :param folder: folder with txt files
+    """Reads csv file, converts it to a pandas Datframe with columns 'text' and 'tag', and shuffles the dataframe
+    :param fpath: csv file path
     :return: pandas DataFrame
     """
 
@@ -25,6 +24,6 @@ def main():
     print(data.shape)
     print('test')
 
-
+x
 if __name__ == '__main__':
     main()
