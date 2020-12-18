@@ -18,12 +18,11 @@ def main():
     folder = r'/Users/akshitagarwal/Desktop/FastAPI Krish Naik/Movie Reviews Sentiment Analysis/movie-reviews-sentiment-analysis/Datasets/'
     file = 'movie_reviews.csv'
     fpath = folder + file
-    # fpath = r"/Users/akshitagarwal/Desktop/FastAPI Krish Naik/Movie Reviews Sentiment Analysis/movie-reviews-sentiment-analysis/Datasets/movie_reviews.csv"
     data = get_reviews_data(fpath)
     print(data.head())
     print(data.shape)
     print('test')
 
-x
+
 if __name__ == '__main__':
     main()
