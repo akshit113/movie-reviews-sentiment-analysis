@@ -8,9 +8,8 @@ def get_reviews_data(fpath):
     """
 
     data = read_csv(fpath)
-    data = data.samplels\
-        (frac=1).reset_index(drop=True)  # Shuffles the dataset
-    print(data.head())cd
+    data = data.samples(frac=1).reset_index(drop=True)  # Shuffles the dataset
+    print(data.head())
     return data
 
 
