@@ -1,17 +1,14 @@
 import nltk
 from keras_preprocessing.sequence import pad_sequences
 from keras_preprocessing.text import Tokenizer
-from pandas import read_csv, DataFrame
 from nltk import word_tokenize
 from nltk.corpus import stopwords
 from nltk.stem.wordnet import WordNetLemmatizer
-
+from pandas import read_csv, DataFrame, concat
 
 nltk.download('punkt')
 nltk.download('stopwords')
 nltk.download('wordnet')
-
-
 
 
 def get_reviews_data(fpath):
@@ -26,14 +23,36 @@ def get_reviews_data(fpath):
     return data
 
 
+def remove_special_chars(df):
+    import re
+    reviews = df['text'].values.tolist()
+    cleaned = []
+    for review in reviews:
+        clean_string = re.sub('\W+', ' ', review).strip(' ')
+        cleaned.append(clean_string)
+    print(cleaned)
+    cleaned_df = DataFrame(cleaned, columns=['text'])
+    print(cleaned_df)
+    return cleaned_df
+
+
 def lemmatize(df):
     reviews = df['text'].values.tolist()
     lmtzr = WordNetLemmatizer()
-    lemmatized = [[lmtzr.lemmatize(word) for word in word_tokenize(review)]
-                  for review in reviews]
-    print(lemmatized[1:5])
-    return lemmatized
+    sentences = []
 
+    for review in reviews:
+        words = []
+        for word in word_tokenize(review):
+            lm = lmtzr.lemmatize(word)
+            if len(lm) > 1:
+                words.append(lm)
+        sentence = " ".join(words)
+        sentences.append(sentence)
+    cleaned_df = DataFrame(sentences, columns=['text'])
+    print(cleaned_df)
+
+    return cleaned_df
 
 
 def remove_stopwords(df):
@@ -85,9 +104,11 @@ def main():
     print(df['tag'].value_counts())
     df['tag'].replace({'pos': 1, 'neg': 0}, inplace=True)
     df = df.head(100)
-    lemmatized = lemmatize(df)
-    cleaned = remove_stopwords(df)
 
+    rem_special = remove_special_chars(df)
+    lemmatized = lemmatize(rem_special)
+    rem_stopwords = remove_stopwords(lemmatized)
+    df = concat([rem_stopwords, df['tag']], axis=1)
     X, Y = preprocess_text_data(df, max_features=1200, max_len=100)
     print(X.shape)
     print(Y.shape)
