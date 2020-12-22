@@ -1,6 +1,5 @@
 import nltk
 from keras_preprocessing.sequence import pad_sequences
-from keras_preprocessing.text import Tokenizer
 from nltk import word_tokenize
 from nltk.corpus import stopwords
 from nltk.stem.wordnet import WordNetLemmatizer
@@ -15,14 +14,14 @@ nltk.download('wordnet')
 
 
 def get_reviews_data(fpath):
-    """Reads csv file, converts it to a pandas Datframe with columns 'text' and 'tag', and shuffles the dataframe
+    """Reads csv file, converts it to a pandas Dataframe with columns 'text' and 'tag', and shuffles the dataframe
     :param fpath: csv file path
     :return: pandas DataFrame
     """
 
     data = read_csv(fpath)
-    # data = data.samples(frac=1).reset_index(drop=True)  # Shuffles the dataset
-    print(data.head())
+    # data = data.head(100)
+    data.sample(frac=1).reset_index(drop=True, inplace=True)  # Shuffles the dataset
     return data
 
 
@@ -72,29 +71,6 @@ def remove_stopwords(df):
     return cleaned_df
 
 
-# def preprocess_text_data(data, max_features, max_len):
-#     """This function prepares the dataset for applying ML Algorithm by converting the text data into numbers
-#     :param data:
-#     :param max_features:the maximum number of words to keep, based on word frequency. Only the most common words are kept
-#     :param max_len: maximum length of sequemces generated in text_to_sequences
-#     :return: numpy array of sequence of numbers (converted from textual data)
-#     """
-#
-#     tokenizer = Tokenizer(num_words=max_features, split=' ')
-#     reviews_list = data['text']
-#     tokenizer.fit_on_texts(reviews_list)
-#     print(tokenizer.word_index)
-#     dc = tokenizer.word_index
-#     dim = len((dc.keys()))
-#
-#     """This is the vocabulary size of the dataset. It is the number of unique words in our dataset. This should be the
-#     input of the embedding layer (input_dim) in the network."""
-#     X = tokenizer.texts_to_sequences(reviews_list)
-#     X = pad_sequences(X, maxlen=max_len)
-#     Y = data.loc[:, ['tag']].values
-#     return X, Y, dim
-#
-
 def create_baseline_model(num_words, input_len):
     """This function creates a LSTM Network with an Embedding Layer
     :param X: train set
@@ -105,16 +81,16 @@ def create_baseline_model(num_words, input_len):
     model = Sequential()
     # print(tokenizer.word_index)
     # model.add(Embedding(input_dim, output_dim))
-    model.add(Embedding(input_dim=num_words, output_dim=32, input_length=input_len))
-    model.add(LSTM(128, dropout=0.2, recurrent_dropout=0.2, go_backwards=False))
-    model.add(Dense(32, activation='tanh'))
+    model.add(Embedding(input_dim=num_words, output_dim=512, input_length=input_len))
+    model.add(LSTM(512, activation='tanh'))
+    model.add(Dense(256, activation='tanh'))
     model.add(Dropout(0.2))
-    model.add(Dense(64, activation='tanh'))
-    model.add(Dropout(0.2))
-    model.add(Dense(128, activation='tanh'))
-    model.add(Dropout(0.9))
+    # model.add(Dense(64, activation='tanh'))
+    # model.add(Dropout(0.2))
+    # model.add(Dense(128, activation='tanh'))
+    # model.add(Dropout(0.9))
     model.add(Dense(1, activation='sigmoid'))  # For binary classification
-    model.compile(loss='binary_crossentropy', optimizer='adam', metrics=['binary_accuracy'])
+    model.compile(loss='binary_crossentropy', optimizer='Adam', metrics=['binary_accuracy'])
     print(model.summary())
     return model
 
@@ -130,6 +106,20 @@ def get_words_counter(df):
     return counts
 
 
+def pad_inputs(x_train, x_test, counter, max_len):
+    from keras_preprocessing.text import Tokenizer
+    tokenizer = Tokenizer(num_words=len(counter))
+    tokenizer.fit_on_texts(x_train)
+    word_index = tokenizer.word_index
+    train_sequences = tokenizer.texts_to_sequences(x_train)
+    test_sequences = tokenizer.texts_to_sequences(x_test)
+    print(train_sequences[1:10])
+
+    x_train_padded = pad_sequences(train_sequences, maxlen=max_len, padding='post', truncating='post')
+    x_test_padded = pad_sequences(test_sequences, maxlen=max_len, padding='post', truncating='post')
+    return x_train_padded, x_test_padded
+
+
 def main():
     # Location of datasets
     folder = r'/Users/akshitagarwal/Desktop/FastAPI Krish Naik/Movie Reviews Sentiment Analysis/movie-reviews-sentiment-analysis/Datasets/'
@@ -139,7 +129,6 @@ def main():
     print(df.head())
     print(df.shape)
     df['tag'].replace({'pos': 1, 'neg': 0}, inplace=True)
-    # df = df.head(100)
 
     lemmatized = lemmatize(df)
     rem_special = remove_special_chars(lemmatized)
@@ -148,29 +137,14 @@ def main():
     df = concat([rem_stopwords, df['tag']], axis=1)
 
     counter = get_words_counter(rem_stopwords)
-    print(counter)
 
     max_len = 20
     x_train, x_test, y_train, y_test = train_test_split(df['text'], df['tag'], test_size=0.2, random_state=0)
-    print(x_test.shape)
-    print(x_train.shape)
-    from keras_preprocessing.text import Tokenizer
-    tokenizer = Tokenizer(num_words=len(counter))
-    tokenizer.fit_on_texts(x_train)
-    word_index = tokenizer.word_index
-    print(word_index)
+    x_train_padded, x_test_padded = pad_inputs(x_train, x_test, counter, max_len)
+    print(x_train_padded.shape)
 
-    train_sequences = tokenizer.texts_to_sequences(x_train)
-    test_sequences = tokenizer.texts_to_sequences(x_test)
-    print(train_sequences[1:10])
-
-    from keras_preprocessing.sequence import pad_sequences
-
-    x_train_padded = pad_sequences(train_sequences, maxlen=max_len, padding='post', truncating='post')
-    x_test_padded = pad_sequences(test_sequences, maxlen=max_len, padding='post', truncating='post')
-    print(x_train_padded[0])
-    model = create_baseline_model(num_words=len(counter),input_len=20)
-    model.fit(x_train_padded, y_train, epochs=10, batch_size=32, verbose=2, validation_data=(x_test_padded, y_test))
+    model = create_baseline_model(num_words=len(counter), input_len=20)
+    model.fit(x_train_padded, y_train, epochs=10, batch_size=128, verbose=2, validation_data=(x_test_padded, y_test))
     print('model is fit...')
     print('test')
 
